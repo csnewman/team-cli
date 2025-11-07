@@ -1,5 +1,5 @@
 # team-cli
-Command line interface for AWS TEAM.
+Command line interface for [AWS Temporary elevated access management (TEAM)](https://aws-samples.github.io/iam-identity-center-team/).
 
 ### Install
 
@@ -11,10 +11,13 @@ go install github.com/csnewman/team-cli/cmd/team-cli@latest
 
 Configure remote server:
 ```
-team-cli configure team.you-company.com
+team-cli configure team.your-company.com
 ```
 
 ### Usage
+
+The tool caches its authentication token automatically. Once expired, any of the following commands will prompt you to
+reauthenticate.
 
 List accounts:
 ```
