@@ -53,6 +53,27 @@ Request submitted
 Request ID: 00000000-0000-0000-0000-000000000000
 ```
 
+Respond to requests interactively:
+```
+$ team-cli respond
+
+Please select the request:
+  [1] requester="example@example.com" account="example" role="ReadOnlyAccess"
+        account_id="123123123123" requested="Tue Nov 11 20:00:00 GMT 2025" start_time="Tue Nov 11 20:00:00 GMT 2025" duration="1 hours" 
+        ticket="demo-123" justification="Demo example"
+
+Request option? 1
+
+Please select the response:
+  [1] Approve
+  [2] Approve without comment
+  [3] Reject
+  [4] Reject without comment
+
+Response option?
+```
+
+
 ### TEAM install configuration
 
 The default cognito client app does not allow localhost redirects upon successful authentication. `team-cli` requires

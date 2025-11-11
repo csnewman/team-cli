@@ -52,9 +52,20 @@ Exclude flags to perform interactive selection.`,
 	requestCmd.Flags().StringP("reason", "j", "", "Justification reason")
 	requestCmd.Flags().BoolP("confirm", "y", false, "Automatically confirm")
 
+	approveCmd := &cobra.Command{
+		Use:   "approve",
+		Short: "Approve elevated access",
+		Long: `Approve temporary elevated access to a AWS account.
+
+Exclude flags to perform interactive selection.`,
+		Args: cobra.ExactArgs(0),
+		RunE: approveCmdRun,
+	}
+
 	rootCmd.AddCommand(configureCmd)
 	rootCmd.AddCommand(listAccountsCmd)
 	rootCmd.AddCommand(requestCmd)
+	rootCmd.AddCommand(approveCmd)
 	rootCmd.SilenceUsage = true
 
 	if err := rootCmd.Execute(); err != nil {

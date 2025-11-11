@@ -29,6 +29,7 @@ type AuthToken struct {
 type IDToken struct {
 	UserID   string `json:"userId"`
 	GroupIDs string `json:"groupIds"`
+	Email    any    `json:"email"`
 }
 
 func (t *AuthToken) ParseIDToken() (*IDToken, error) {
