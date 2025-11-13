@@ -84,3 +84,40 @@ it's callback address to be added to the allowed list to be able to fetch authen
 Add `http://localhost:43672/` to the `team06dbb7fc_app_clientWeb` app client in the Cognito `team` user pool.
 
 ![img.png](.github/callback.png)
+
+#### Optional: Device code support
+
+Optionally, you can enable "Device code" support. This allows you to use team-cli on a device without a GUI.
+
+1. Edit `deployment/template.yml` in your `iam-identity-center-team` fork, adding in:
+    
+    ```yaml
+    - Source: /device_code/
+      Status: 200
+      Target: /device_code.html
+    ```
+    to `Resources.AmplifyApp.Properies.CustomRules` (around line 77), as the first rule.
+ 
+    It will look similar to:
+
+    ```yaml
+    # ...
+    Description: Temporary Elevated Access Management Application
+    CustomRules:
+    - Source: /device_code/
+      Status: 200
+      Target: /device_code.html
+    - Source: /<*>
+      Status: 404
+      Target: /index.html
+    # ...
+    ```
+
+2. Copy `device_code.html` & `device_code.js` from the root of this repo to `public/`.
+
+3. Trigger a redeployment of TEAM and wait for it to complete (including executing `./deploy.sh` to apply the new rule).
+
+4. Test device code auth: `team-cli configure team.your-company.com --device-code` 
+   ![device-code.png](.github/device-code.png)
+
+5. Paste the code into the team-cli prompt.
