@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"runtime/debug"
 
 	"github.com/spf13/cobra"
 )
@@ -16,7 +17,7 @@ func main() {
 		PersistentPreRunE: rootCmdPersistentPre,
 	}
 
-	rootCmd.PersistentFlags().BoolP("verbose", "v", false, "enable verbose output")
+	rootCmd.PersistentFlags().CountP("verbose", "v", "increase verbosity")
 
 	configureCmd := &cobra.Command{
 		Use:   "configure [server]",
@@ -78,15 +79,17 @@ Exclude flags to perform interactive selection.`,
 }
 
 func rootCmdPersistentPre(cmd *cobra.Command, _ []string) error {
-	verbose, err := cmd.Flags().GetBool("verbose")
+	verbose, err := cmd.Flags().GetCount("verbose")
 	if err != nil {
 		return fmt.Errorf("could not get verbose flag: %w", err)
 	}
 
-	level := slog.LevelInfo
+	level := slog.LevelWarn
 
-	if verbose {
+	if verbose > 1 {
 		level = slog.LevelDebug
+	} else if verbose > 0 {
+		level = slog.LevelInfo
 	}
 
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
@@ -94,6 +97,14 @@ func rootCmdPersistentPre(cmd *cobra.Command, _ []string) error {
 		Level:       level,
 		ReplaceAttr: nil,
 	})))
+
+	version := "Unknown version"
+
+	if info, ok := debug.ReadBuildInfo(); ok {
+		version = info.Main.Version
+	}
+
+	fmt.Println("Team-CLI - " + version)
 
 	return nil
 }
