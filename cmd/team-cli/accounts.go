@@ -16,9 +16,16 @@ func listAccountsCmdRun(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("could not read config and authenticate: %w", err)
 	}
 
+	fmt.Println()
+	fmt.Println("Fetching AWS accounts")
+
 	accounts, err := team.FetchAccounts(cmd.Context(), cfg.ServerConfig, cfg.AuthToken)
 	if err != nil {
 		return fmt.Errorf("could not fetch accounts: %w", err)
+	}
+
+	if err := cacheAccounts(accounts); err != nil {
+		return fmt.Errorf("could not cache accounts: %w", err)
 	}
 
 	sortedAccs := slices.SortedFunc(maps.Values(accounts), func(a *team.Account, b *team.Account) int {

@@ -55,90 +55,133 @@ func requestCmdRun(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("could not read config and authenticate: %w", err)
 	}
 
-	accounts, err := team.FetchAccounts(cmd.Context(), cfg.ServerConfig, cfg.AuthToken)
-	if err != nil {
-		return fmt.Errorf("could not fetch accounts: %w", err)
-	}
+	var (
+		selectedAccount *team.Account
+		selectedRole    *team.Role
+	)
 
-	sorted := slices.SortedFunc(maps.Values(accounts), func(a *team.Account, b *team.Account) int {
-		return strings.Compare(a.Name, b.Name)
-	})
-
-	// Select account
-	if len(sorted) == 0 {
-		return fmt.Errorf("%w: no accounts found", ErrInvalid)
-	}
-
-	var selectedAccount *team.Account
-
-	if account == "" {
-		fmt.Println()
-		fmt.Println("Please select the account:")
-		for i, acc := range sorted {
-			fmt.Printf("  [%d] id=%q name=%q\n", i+1, acc.ID, acc.Name)
-		}
-
-		fmt.Println()
-
-		idx, err := promptSelection("Account option? ", 1, len(sorted))
+	// If account & role are pre-provided, try the cache first
+	if account != "" && role != "" {
+		cache, ok, err := getAccountsCache()
 		if err != nil {
-			return fmt.Errorf("could not select account: %w", err)
+			return fmt.Errorf("could not get accounts cache: %w", err)
 		}
 
-		selectedAccount = sorted[idx-1]
-	} else {
-		for _, acc := range accounts {
-			if strings.EqualFold(acc.ID, account) || strings.EqualFold(acc.Name, account) {
+		if ok {
+			for _, acc := range cache.Accounts {
+				if !strings.EqualFold(acc.ID, account) && !strings.EqualFold(acc.Name, account) {
+					continue
+				}
+
 				selectedAccount = acc
 
+				for _, perm := range acc.Roles {
+					if !strings.EqualFold(perm.ID, role) && !strings.EqualFold(perm.Name, role) {
+						continue
+					}
+
+					selectedRole = perm
+
+					break
+				}
+
 				break
 			}
-		}
-
-		if selectedAccount == nil {
-			return fmt.Errorf("%w: account %q not found", ErrInvalid, account)
 		}
 	}
 
-	// Select role
-	var selectedRole *team.Role
-
-	allowedRoles := slices.SortedFunc(maps.Values(selectedAccount.Roles), func(a *team.Role, b *team.Role) int {
-		return strings.Compare(a.Name, b.Name)
-	})
-
-	if role == "" {
+	if selectedAccount != nil && selectedRole != nil {
 		fmt.Println()
-		fmt.Println("Please select the role:")
-		for i, r := range allowedRoles {
-			fmt.Printf(
-				"  [%d] name=%q max_duration_with_approval=%d max_duration_without_approval=%d\n",
-				i+1,
-				r.Name,
-				r.MaxDurApproval,
-				r.MaxDurNoApproval,
-			)
-		}
-
+		fmt.Println("AWS account & role found in cache")
 		fmt.Println()
-
-		idx, err := promptSelection("Role option? ", 1, len(sorted))
-		if err != nil {
-			return fmt.Errorf("could not select role: %w", err)
-		}
-
-		selectedRole = allowedRoles[idx-1]
 	} else {
-		for _, perm := range allowedRoles {
-			if strings.EqualFold(perm.ID, role) || strings.EqualFold(perm.Name, role) {
-				selectedRole = perm
+		fmt.Println()
+		fmt.Println("Fetching AWS accounts")
+		accounts, err := team.FetchAccounts(cmd.Context(), cfg.ServerConfig, cfg.AuthToken)
+		if err != nil {
+			return fmt.Errorf("could not fetch accounts: %w", err)
+		}
 
-				break
+		if err := cacheAccounts(accounts); err != nil {
+			return fmt.Errorf("could not cache accounts: %w", err)
+		}
+
+		sorted := slices.SortedFunc(maps.Values(accounts), func(a *team.Account, b *team.Account) int {
+			return strings.Compare(a.Name, b.Name)
+		})
+
+		// Select account
+		if len(sorted) == 0 {
+			return fmt.Errorf("%w: no accounts found", ErrInvalid)
+		}
+
+		if account == "" {
+			fmt.Println()
+			fmt.Println("Please select the account:")
+			for i, acc := range sorted {
+				fmt.Printf("  [%d] id=%q name=%q\n", i+1, acc.ID, acc.Name)
+			}
+
+			fmt.Println()
+
+			idx, err := promptSelection("Account option? ", 1, len(sorted))
+			if err != nil {
+				return fmt.Errorf("could not select account: %w", err)
+			}
+
+			selectedAccount = sorted[idx-1]
+		} else {
+			for _, acc := range accounts {
+				if strings.EqualFold(acc.ID, account) || strings.EqualFold(acc.Name, account) {
+					selectedAccount = acc
+
+					break
+				}
+			}
+
+			if selectedAccount == nil {
+				return fmt.Errorf("%w: account %q not found", ErrInvalid, account)
 			}
 		}
 
-		if selectedRole == nil {
-			return fmt.Errorf("%w: role %q not found", ErrInvalid, role)
+		// Select role
+		allowedRoles := slices.SortedFunc(maps.Values(selectedAccount.Roles), func(a *team.Role, b *team.Role) int {
+			return strings.Compare(a.Name, b.Name)
+		})
+
+		if role == "" {
+			fmt.Println()
+			fmt.Println("Please select the role:")
+			for i, r := range allowedRoles {
+				fmt.Printf(
+					"  [%d] name=%q max_duration_with_approval=%d max_duration_without_approval=%d\n",
+					i+1,
+					r.Name,
+					r.MaxDurApproval,
+					r.MaxDurNoApproval,
+				)
+			}
+
+			fmt.Println()
+
+			idx, err := promptSelection("Role option? ", 1, len(sorted))
+			if err != nil {
+				return fmt.Errorf("could not select role: %w", err)
+			}
+
+			selectedRole = allowedRoles[idx-1]
+		} else {
+			for _, perm := range allowedRoles {
+				if strings.EqualFold(perm.ID, role) || strings.EqualFold(perm.Name, role) {
+					selectedRole = perm
+
+					break
+				}
+			}
+
+			if selectedRole == nil {
+				return fmt.Errorf("%w: role %q not found", ErrInvalid, role)
+			}
 		}
 	}
 

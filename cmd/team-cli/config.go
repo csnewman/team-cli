@@ -22,7 +22,7 @@ type Config struct {
 	NoBrowser     bool               `json:"no_browser"`
 }
 
-func configPath() (string, error) {
+func configPath(file string) (string, error) {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return "", fmt.Errorf("failed to get user dir: %w", err)
@@ -34,11 +34,11 @@ func configPath() (string, error) {
 		return "", fmt.Errorf("failed to create team config dir: %w", err)
 	}
 
-	return filepath.Join(teamPath, "config.json"), nil
+	return filepath.Join(teamPath, file), nil
 }
 
 func readConfig() (*Config, error) {
-	path, err := configPath()
+	path, err := configPath("config.json")
 	if err != nil {
 		return nil, fmt.Errorf("failed to get config path: %w", err)
 	}
@@ -62,7 +62,7 @@ func readConfig() (*Config, error) {
 }
 
 func writeConfig(cfg *Config) error {
-	path, err := configPath()
+	path, err := configPath("config.json")
 	if err != nil {
 		return fmt.Errorf("failed to get config path: %w", err)
 	}
